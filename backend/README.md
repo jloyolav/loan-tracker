@@ -10,6 +10,10 @@ This document captures **Phase 2 — Lightweight Design** outcomes for the backe
 - **ORM:** SQLModel / SQLAlchemy
 - **Database:** PostgreSQL
 
+## Development setup
+
+From this directory, with your virtualenv activated: `pip install -r requirements.txt`. Use a `DATABASE_URL` shaped like `postgresql://...` (see `.env_example`); it matches the `psycopg2-binary` driver.
+
 ---
 
 ## MVP 1 scope (backend-relevant)
