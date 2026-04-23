@@ -1,120 +1,189 @@
-# LoanTracker — Backend (design notes)
+# LoanTracker — Backend
 
-This document captures **Phase 2 — Lightweight Design** outcomes for the backend: scope, data model, and HTTP API. It mirrors [`+README Dev Guide.md`](+README%20Dev%20Guide.md) as the source of truth until Phase 3 implementation exists.
+This folder contains the **FastAPI** backend for LoanTracker: a small REST API over PostgreSQL to track people you lend to (**debtors**) and their **loans / payments** (**transactions**).
 
 ---
 
-## Stack (target)
+## Stack
 
 - **Framework:** FastAPI
 - **ORM:** SQLModel / SQLAlchemy
 - **Database:** PostgreSQL
 
-## Development setup
+---
 
-From this directory, with your virtualenv activated: `pip install -r requirements.txt`. Use a `DATABASE_URL` shaped like `postgresql://...` (see `.env_example`); it matches the `psycopg2-binary` driver.
+## Project layout
+
+```text
+backend/
+  main.py              # ASGI entry: re-exports `app` for uvicorn
+  requirements.txt
+  .env_example         # Template for local env vars (copy to `.env`)
+  app/
+    main.py            # FastAPI app, lifespan, CORS, health routes
+    config.py          # Settings from environment / `.env`
+    database.py        # Engine, `get_session`, `create_db_and_tables`, DB ping
+    models.py          # SQLModel: `debtor`, `loan_transaction`
+    routers/
+      debtors.py       # Debtor HTTP API
+```
 
 ---
 
-## MVP 1 scope (backend-relevant)
+## Development setup
 
-Explicit exclusions for this version:
+1. Create/activate a virtualenv in this directory (example: `python -m venv venv` then `source venv/bin/activate`).
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Copy `.env_example` to `.env` and adjust:
+   - **`DATABASE_URL`** — e.g. `postgresql://postgres@localhost:5432/loan_tracker`
+   - **`CORS_ORIGINS`** — comma-separated frontend origins
+
+4. Run the API (from `loan-tracker/backend`):
+
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+   Equivalent: `uvicorn app.main:app --reload`
+
+5. Open **interactive API docs:** `http://127.0.0.1:8000/docs` (or your chosen host/port).
+
+---
+
+## Runtime behavior
+
+- **Startup (`lifespan`):** calls `SQLModel.metadata.create_all(engine)` so missing tables are created in dev. This does **not** migrate or rename existing tables.
+- **`/health`:** loads settings (fails fast if `.env` / `DATABASE_URL` is wrong).
+- **`/health/db`:** runs `SELECT 1` against PostgreSQL.
+
+---
+
+## Implementation status
+
+| Area                                                                         | Status                         |
+| ---------------------------------------------------------------------------- | ------------------------------ |
+| Dependencies, settings, engine, sessions                                     | Done                           |
+| CORS from `CORS_ORIGINS`                                                     | Done                           |
+| Create `debtor`, `loan_transaction` tables on DB via `create_all` on startup | Done                           |
+| `POST /debtors`, `GET /debtors`, `GET /debtors/{debtor_id}`                  | Done                           |
+| `POST/GET /debtors/{debtor_id}/transactions`                                 | **Not implemented yet** (next) |
+
+---
+
+## Scope MVP 1 (v0.1 backend)
 
 - No authentication
-- No email notifications
-- No editing or deleting transactions (no `PATCH` / `DELETE` on transactions)
-- No advanced filtering (no query params on list endpoints)
+- No email notifications to debtors
+- No editing or deleting transactions (`PATCH` / `DELETE`)
+- No advanced filtering on list endpoints
 
-Single-tenant: all rows belong to one implicit “owner” until multi-user work (e.g. v0.4).
+Single-tenant: all rows belong to one implicit owner until multi-user work (e.g. v0.4).
 
 ---
 
 ## System use cases → backend responsibility
 
-| Use case                    | Backend role                                    |
-| --------------------------- | ----------------------------------------------- |
-| Create debtor               | Persist `debtor`; validate `name`               |
-| List debtors                | Return all debtors                              |
-| Create transaction          | Persist `transaction` under a valid `debtor_id` |
-| List transactions by debtor | Return transactions for one `debtor_id`         |
+| Use case                    | Backend role                                                |
+| --------------------------- | ----------------------------------------------------------- |
+| Create debtor               | Persist `debtor`; validate `name`                           |
+| List debtors                | Return all debtors                                          |
+| Create transaction          | Persist row in `loan_transaction` under a valid `debtor_id` |
+| List transactions by debtor | Return transactions for one `debtor_id`                     |
 
-User-facing “balance per person” is not a dedicated API in MVP 1; consumers may derive it from the transaction list (UI emphasis in v0.2).
+Balance per debtor is not a dedicated endpoint in MVP 1; derive from the transaction list if needed.
 
 ---
 
 ## Data model (PostgreSQL)
 
-Two tables for MVP 1. Balance is **derived**, not stored.
+Two logical entities; physical transaction table name is **`loan_transaction`** (avoids reserved-word friction with `transaction`).
 
 ### `debtor`
 
-| Field  | Type           | Required | Notes                            |
-| ------ | -------------- | -------- | -------------------------------- |
-| `id`   | `BIGSERIAL`    | yes      | Primary key                      |
-| `name` | `VARCHAR(255)` | yes      | Trimmed; length 1–255 (app + DB) |
+| Field  | Type           | Required | Notes                                  |
+| ------ | -------------- | -------- | -------------------------------------- |
+| `id`   | `SERIAL`       | yes      | Primary key                            |
+| `name` | `VARCHAR(255)` | yes      | Trimmed; length 1–255 (app validation) |
 
-### `transaction`
+### `loan_transaction`
 
-| Field         | Type                      | Required | Notes                                  |
-| ------------- | ------------------------- | -------- | -------------------------------------- |
-| `id`          | `BIGSERIAL`               | yes      | Primary key                            |
-| `debtor_id`   | `BIGINT`                  | yes      | FK → `debtor.id`, `ON DELETE CASCADE`  |
-| `amount`      | `NUMERIC(12, 2)`          | yes      | `CHECK (amount > 0)`; sign from `type` |
-| `occurred_on` | `DATE`                    | yes      | Business date of loan/payment          |
-| `type`        | `transaction_type` (ENUM) | yes      | `loan` \| `payment`                    |
-| `created_at`  | `TIMESTAMPTZ`             | yes      | Default `now()`                        |
+| Field         | Type                      | Required | Notes                                     |
+| ------------- | ------------------------- | -------- | ----------------------------------------- |
+| `id`          | `SERIAL`                  | yes      | Primary key                               |
+| `debtor_id`   | `INTEGER` 3               | yes      | FK → `debtor.id`, `ON DELETE CASCADE`     |
+| `amount`      | `NUMERIC(12, 2)`          | yes      | `CHECK (amount > 0)`; meaning from `type` |
+| `occurred_on` | `DATE`                    | yes      | Business date                             |
+| `type`        | `transaction_type` (ENUM) | yes      | `loan` \| `payment`                       |
+| `created_at`  | `TIMESTAMPTZ`             | yes      | Default `now()`                           |
 
 ### Relationships
 
-- One **debtor** → many **transactions** (`transaction.debtor_id`).
+- One debtor → many rows in `loan_transaction` (`debtor_id`).
 
-### Future (not MVP 1)
+### Future (after v0.1)
 
 - **v0.3:** edit/delete policy (`updated_at`, soft delete, etc.).
-- **v0.4:** `user_id` on both tables; scope every query by user.
-
-### Design notes
-
-- One table + `type` for loans and payments (shared columns).
-- Money as `NUMERIC(12,2)` — avoid floats for currency.
+- **v0.4:** `user_id` on tables; scope queries by user.
 
 ---
 
-## HTTP API (MVP 1)
+## HTTP API
 
 ### Conventions
 
-- Plural resources: `/debtors`.
-- Nested transactions: `/debtors/{debtor_id}/transactions` (path owns `debtor_id`; do not duplicate in body on create).
-- JSON names align with columns (`occurred_on`, `type`, …).
-- List endpoints return a **JSON array** of objects.
+- List endpoints return a **JSON array** where specified.
 
-### Endpoints
+### Health & root
 
-#### `POST /debtors`
+| Method | Path         | Purpose               |
+| ------ | ------------ | --------------------- |
+| `GET`  | `/`          | Service id JSON       |
+| `GET`  | `/health`    | Config reachable      |
+| `GET`  | `/health/db` | Database connectivity |
 
-- **Body:** `{ "name": string }`
-- **Response:** `{ "id": number, "name": string }`
-- **Status:** `201 Created`; `422` / `400` on validation error
+### Debtors (implemented)
 
-#### `GET /debtors`
+| Method | Path                   | Body                 | Success                                                  |
+| ------ | ---------------------- | -------------------- | -------------------------------------------------------- |
+| `POST` | `/debtors`             | `{ "name": string }` | `201` + `{ "id", "name" }` (name trimmed; empty → `422`) |
+| `GET`  | `/debtors`             | —                    | `200` + `[{ "id", "name" }, ...]`                        |
+| `GET`  | `/debtors/{debtor_id}` | —                    | `200` + `{ "id", "name" }` or `404`                      |
 
-- **Response:** `[ { "id", "name" }, ... ]`
-- **Status:** `200 OK`
+### Transactions (planned, not implemented yet)
 
-#### `GET /debtors/{debtor_id}`
+| Method | Path                                | Body                                  | Expected when implemented                                   |
+| ------ | ----------------------------------- | ------------------------------------- | ----------------------------------------------------------- |
+| `POST` | `/debtors/{debtor_id}/transactions` | `{ "amount", "occurred_on", "type" }` | `201`; `404` if debtor missing; `422` if invalid            |
+| `GET`  | `/debtors/{debtor_id}/transactions` | —                                     | `200` array; sort `occurred_on` then `created_at` ascending |
 
-- **Response:** `{ "id", "name" }`
-- **Status:** `200 OK`; `404` if missing
+---
 
-#### `POST /debtors/{debtor_id}/transactions`
+## Manual testing (quick)
 
-- **Body:** `{ "amount": number, "occurred_on": "YYYY-MM-DD", "type": "loan" | "payment" }`
-- **Response:** `{ "id", "debtor_id", "amount", "occurred_on", "type", "created_at" }` (`created_at` ISO-8601)
-- **Status:** `201 Created`; `404` if debtor missing; `422` on invalid payload
+With the server running, from a terminal:
 
-#### `GET /debtors/{debtor_id}/transactions`
+```bash
+BASE=http://127.0.0.1:8000
 
-- **Response:** array of transaction objects (same shape as create response)
-- **Sort (recommended):** `occurred_on` ASC, then `created_at` ASC
-- **Status:** `200 OK`; `404` if debtor missing
+curl -sS -X POST "$BASE/debtors" -H "Content-Type: application/json" \
+  -d '{"name":"  Ana López  "}' -w "\nHTTP:%{http_code}\n"
+
+curl -sS "$BASE/debtors" -w "\nHTTP:%{http_code}\n"
+
+curl -sS "$BASE/debtors/1" -w "\nHTTP:%{http_code}\n"
+
+curl -sS "$BASE/debtors/999999" -w "\nHTTP:%{http_code}\n"
+```
+
+Use `/docs` for interactive tries and to see exact validation error bodies (`422`).
+
+---
+
+## Troubleshooting
+
+- **Editor warnings** (`fastapi` import could not be resolved): point the IDE Python interpreter to this project’s `venv`.
