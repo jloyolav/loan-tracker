@@ -26,6 +26,7 @@ backend/
     models.py          # SQLModel: `debtor`, `loan_transaction`
     routers/
       debtors.py       # Debtor HTTP API
+      transactions.py  # Nested transaction HTTP API
 ```
 
 ---
@@ -71,7 +72,7 @@ backend/
 | CORS from `CORS_ORIGINS`                                                     | Done                           |
 | Create `debtor`, `loan_transaction` tables on DB via `create_all` on startup | Done                           |
 | `POST /debtors`, `GET /debtors`, `GET /debtors/{debtor_id}`                  | Done                           |
-| `POST/GET /debtors/{debtor_id}/transactions`                                 | **Not implemented yet** (next) |
+| `POST/GET /debtors/{debtor_id}/transactions`                                 | Done                           |
 
 ---
 
@@ -154,12 +155,14 @@ Two logical entities; physical transaction table name is **`loan_transaction`** 
 | `GET`  | `/debtors`             | —                    | `200` + `[{ "id", "name" }, ...]`                        |
 | `GET`  | `/debtors/{debtor_id}` | —                    | `200` + `{ "id", "name" }` or `404`                      |
 
-### Transactions (planned, not implemented yet)
+### Transactions (implemented)
 
-| Method | Path                                | Body                                  | Expected when implemented                                   |
-| ------ | ----------------------------------- | ------------------------------------- | ----------------------------------------------------------- |
-| `POST` | `/debtors/{debtor_id}/transactions` | `{ "amount", "occurred_on", "type" }` | `201`; `404` if debtor missing; `422` if invalid            |
-| `GET`  | `/debtors/{debtor_id}/transactions` | —                                     | `200` array; sort `occurred_on` then `created_at` ascending |
+| Method | Path | Body | Success |
+| ------ | ---- | ---- | ------- |
+| `POST` | `/debtors/{debtor_id}/transactions` | `{ "amount", "occurred_on", "type" }` (`type`: `loan` or `payment`; `amount` must be positive) | `201` + `{ id, debtor_id, amount, occurred_on, type, created_at }`; `404` if debtor missing; `422` if invalid |
+| `GET` | `/debtors/{debtor_id}/transactions` | — | `200` + array of transaction objects, ordered by `occurred_on` then `created_at` ascending; `404` if debtor missing |
+
+PostgreSQL enum `transaction_type` stores lowercase values (`loan`, `payment`); the ORM maps Python `TransactionType` accordingly.
 
 ---
 
@@ -178,6 +181,11 @@ curl -sS "$BASE/debtors" -w "\nHTTP:%{http_code}\n"
 curl -sS "$BASE/debtors/1" -w "\nHTTP:%{http_code}\n"
 
 curl -sS "$BASE/debtors/999999" -w "\nHTTP:%{http_code}\n"
+
+curl -sS -X POST "$BASE/debtors/1/transactions" -H "Content-Type: application/json" \
+  -d '{"amount":50,"occurred_on":"2026-04-22","type":"payment"}' -w "\nHTTP:%{http_code}\n"
+
+curl -sS "$BASE/debtors/1/transactions" -w "\nHTTP:%{http_code}\n"
 ```
 
 Use `/docs` for interactive tries and to see exact validation error bodies (`422`).

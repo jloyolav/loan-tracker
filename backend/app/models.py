@@ -39,7 +39,12 @@ class Transaction(SQLModel, table=True):
     occurred_on: date = Field(nullable=False)
     type: TransactionType = Field(
         sa_column=Column(
-            SQLEnum(TransactionType, name="transaction_type", native_enum=True),
+            SQLEnum(
+                TransactionType,
+                name="transaction_type",
+                native_enum=True,
+                values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            ),
             nullable=False,
         ),
     )

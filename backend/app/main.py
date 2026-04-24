@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.database import create_db_and_tables, ping_database
 from app.models import Debtor, Transaction
 from app.routers import debtors as debtors_router
+from app.routers import transactions as transactions_router
 
 # Keep explicit model imports so SQLModel metadata is populated before create_all.
 # Types are not used directly in the code, but by importing them, their definitions 
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(debtors_router.router)
+app.include_router(transactions_router.router)
 
 
 @app.get("/")
