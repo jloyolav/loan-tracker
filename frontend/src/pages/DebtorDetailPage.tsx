@@ -1,18 +1,52 @@
-import { Heading, Text } from "@chakra-ui/react";
-import { Link } from "react-router-dom";
+import { Heading, Spinner, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import CreateTransactionForm from "../components/CreateTransactionForm";
 import TransactionList from "../components/TransactionList";
-import type { Transaction, TransactionCreate } from "../types";
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 1, debtor_id: 1, amount: 5000, occurred_on: "2024-01-15", type: "loan", created_at: "2024-01-15T10:00:00Z" },
-  { id: 2, debtor_id: 1, amount: 2000, occurred_on: "2024-02-01", type: "payment", created_at: "2024-02-01T10:00:00Z" },
-  { id: 3, debtor_id: 1, amount: 1500, occurred_on: "2024-03-10", type: "loan", created_at: "2024-03-10T10:00:00Z" },
-];
+import { createTransaction, getDebtor, getTransactions } from "../services/api";
+import type { Debtor, Transaction, TransactionCreate } from "../types";
 
 export default function DebtorDetailPage() {
-  function handleCreateTransaction(data: TransactionCreate) {
-    console.log("Submit transaction (mock):", data);
+  // Get the debtor ID from the URL with useParams (from react-router-dom)
+  const { id } = useParams();
+  const debtorId = Number(id);
+
+  const [debtor, setDebtor] = useState<Debtor | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // This effect fetches the debtor and transactions from the API and sets the state
+  useEffect(() => {
+    //Parallel API calls
+    Promise.all([getDebtor(debtorId), getTransactions(debtorId)])
+      .then(([debtorData, transactionsData]) => {
+        setDebtor(debtorData);
+        setTransactions(transactionsData);
+      })
+      .catch((error) => setError(error.message))
+      .finally(() => setIsLoading(false));
+  }, [debtorId]);
+
+  async function handleCreateTransaction(data: TransactionCreate) {
+    try {
+      const newTransaction = await createTransaction(debtorId, data);
+      setTransactions((prev) => {
+        if (prev.length === 0) return [newTransaction];
+        if (newTransaction.occurred_on < prev[0].occurred_on)
+          return [newTransaction, ...prev];
+        if (newTransaction.occurred_on >= prev[prev.length - 1].occurred_on)
+          return [...prev, newTransaction];
+        const idx = prev.findIndex(
+          (t) => t.occurred_on > newTransaction.occurred_on,
+        );
+        return [...prev.slice(0, idx), newTransaction, ...prev.slice(idx)];
+      });
+      setFormError(null);
+    } catch {
+      setFormError("Failed to add transaction. Please try again.");
+    }
   }
 
   return (
@@ -22,9 +56,22 @@ export default function DebtorDetailPage() {
           ← Back to debtors
         </Text>
       </Link>
-      <Heading mb={6}>Ana García (mock)</Heading>
-      <CreateTransactionForm onSubmit={handleCreateTransaction} />
-      <TransactionList transactions={MOCK_TRANSACTIONS} />
+      {isLoading ? (
+        <Spinner />
+      ) : error || !debtor ? (
+        <Text color="red.500">{error ?? "Debtor not found"}</Text>
+      ) : (
+        <>
+          <Heading mb={6}>{debtor.name}</Heading>
+          <CreateTransactionForm onSubmit={handleCreateTransaction} />
+          {formError && <Text color="red.500" mb={4}>{formError}</Text>}
+          {transactions.length > 0 ? (
+            <TransactionList transactions={transactions} />
+          ) : (
+            <Text>No transactions found</Text>
+          )}
+        </>
+      )}
     </>
   );
 }

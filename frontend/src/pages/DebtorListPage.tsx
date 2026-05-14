@@ -1,28 +1,48 @@
-import { Heading } from "@chakra-ui/react";
-import { useState } from "react";
+import { Heading, Spinner, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import CreateDebtorForm from "../components/CreateDebtorForm";
 import DebtorList from "../components/DebtorList";
+import { createDebtor, getDebtors } from "../services/api";
 import type { Debtor, DebtorCreate } from "../types";
 
-const MOCK_DEBTORS: Debtor[] = [
-  { id: 1, name: "Ana García" },
-  { id: 2, name: "Carlos López" },
-  { id: 3, name: "María Rodríguez" },
-];
-
 export default function DebtorListPage() {
-  const [debtors, setDebtors] = useState<Debtor[]>(MOCK_DEBTORS);
+  const [debtors, setDebtors] = useState<Debtor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  function handleCreateDebtor(data: DebtorCreate) {
-    const newDebtor: Debtor = { id: Date.now(), name: data.name };
-    setDebtors((prev) => [...prev, newDebtor]);
+  useEffect(() => {
+    getDebtors()
+      .then(setDebtors)
+      .catch(() => setError("Failed to fetch debtors"))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  async function handleCreateDebtor(data: DebtorCreate) {
+    try {
+      const newDebtor = await createDebtor(data);
+      setDebtors((prev) => [...prev, newDebtor]);
+      setFormError(null);
+    } catch {
+      setFormError("Failed to add debtor. Please try again.");
+    }
   }
 
   return (
     <>
+      {error && (
+        <Text color="red.500" mb={4}>
+          {error}
+        </Text>
+      )}
       <Heading mb={6}>Debtors</Heading>
       <CreateDebtorForm onSubmit={handleCreateDebtor} />
-      <DebtorList debtors={debtors} />
+      {formError && (
+        <Text color="red.500" mb={4}>
+          {formError}
+        </Text>
+      )}
+      {isLoading ? <Spinner /> : <DebtorList debtors={debtors} />}
     </>
   );
 }
