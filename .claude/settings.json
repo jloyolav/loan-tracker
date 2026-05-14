@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Edit",
-      "Read"
+      "Read",
+      "Bash(rm *)",
+      "Bash(pnpm *)"
     ]
   }
 }
