@@ -23,7 +23,7 @@ class TransactionRead(SQLModel):
 
     id: int
     debtor_id: int
-    amount: Decimal
+    amount: int
     occurred_on: date
     type: TransactionType
     created_at: datetime
