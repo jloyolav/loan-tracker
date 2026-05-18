@@ -1,6 +1,7 @@
 export interface Debtor {
   id: number;
   name: string;
+  balance: number;
 }
 
 export interface DebtorCreate {

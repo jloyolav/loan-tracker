@@ -1,5 +1,6 @@
 import { Badge, Table, Text } from "@chakra-ui/react";
 import type { Transaction } from "../types";
+import { formatCurrency } from "../utils";
 
 interface Props {
   transaction: Transaction;
@@ -18,7 +19,8 @@ export default function TransactionRow({ transaction }: Props) {
       </Table.Cell>
       <Table.Cell textAlign="right">
         <Text color={isLoan ? "red.600" : "green.600"} fontWeight="medium">
-          {isLoan ? "-" : "+"}${transaction.amount.toFixed(2)}
+          {isLoan ? "-" : "+"}
+          {formatCurrency(transaction.amount)}
         </Text>
       </Table.Cell>
     </Table.Row>

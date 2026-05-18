@@ -1,10 +1,11 @@
-import { Heading, Spinner, Text } from "@chakra-ui/react";
+import { Flex, Heading, Spacer, Spinner, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import CreateTransactionForm from "../components/CreateTransactionForm";
 import TransactionList from "../components/TransactionList";
 import { createTransaction, getDebtor, getTransactions } from "../services/api";
 import type { Debtor, Transaction, TransactionCreate } from "../types";
+import { formatCurrency } from "../utils";
 
 export default function DebtorDetailPage() {
   // Get the debtor ID from the URL with useParams (from react-router-dom)
@@ -62,9 +63,26 @@ export default function DebtorDetailPage() {
         <Text color="red.500">{error ?? "Debtor not found"}</Text>
       ) : (
         <>
-          <Heading mb={6}>{debtor.name}</Heading>
+          <Flex mb={6}>
+            <Heading>{debtor.name}</Heading>
+            <Spacer />
+            <Text fontWeight="semibold" mr={2}>
+              Total Balance:
+            </Text>
+            <Text
+              fontWeight="semibold"
+              color={debtor.balance >= 0 ? "green.500" : "red.500"}
+            >
+              {formatCurrency(debtor.balance)}
+            </Text>
+          </Flex>
+
           <CreateTransactionForm onSubmit={handleCreateTransaction} />
-          {formError && <Text color="red.500" mb={4}>{formError}</Text>}
+          {formError && (
+            <Text color="red.500" mb={4}>
+              {formError}
+            </Text>
+          )}
           {transactions.length > 0 ? (
             <TransactionList transactions={transactions} />
           ) : (
