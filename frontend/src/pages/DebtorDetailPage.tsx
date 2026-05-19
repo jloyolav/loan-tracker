@@ -6,6 +6,7 @@ import TransactionList from "../components/TransactionList";
 import { createTransaction, getDebtor, getTransactions } from "../services/api";
 import type { Debtor, Transaction, TransactionCreate } from "../types";
 import { formatCurrency } from "../utils";
+import { balanceColors, errorColors } from "@/theme";
 
 export default function DebtorDetailPage() {
   // Get the debtor ID from the URL with useParams (from react-router-dom)
@@ -60,7 +61,7 @@ export default function DebtorDetailPage() {
       {isLoading ? (
         <Spinner />
       ) : error || !debtor ? (
-        <Text color="red.500">{error ?? "Debtor not found"}</Text>
+        <Text color={errorColors.text}>{error ?? "Debtor not found"}</Text>
       ) : (
         <>
           <Flex mb={6}>
@@ -71,7 +72,11 @@ export default function DebtorDetailPage() {
             </Text>
             <Text
               fontWeight="semibold"
-              color={debtor.balance >= 0 ? "green.500" : "red.500"}
+              color={
+                debtor.balance >= 0
+                  ? balanceColors.positive
+                  : balanceColors.negative
+              }
             >
               {formatCurrency(debtor.balance)}
             </Text>
@@ -79,7 +84,7 @@ export default function DebtorDetailPage() {
 
           <CreateTransactionForm onSubmit={handleCreateTransaction} />
           {formError && (
-            <Text color="red.500" mb={4}>
+            <Text color={errorColors.text} mb={4}>
               {formError}
             </Text>
           )}

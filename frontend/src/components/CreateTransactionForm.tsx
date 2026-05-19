@@ -3,12 +3,14 @@ import {
   Button,
   Flex,
   Input,
-  NativeSelect,
+  Spacer,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import type { TransactionCreate } from "../types";
+import { GiPayMoney, GiReceiveMoney } from "react-icons/gi";
+import { transactionColors } from "@/theme";
 
 interface Props {
   onSubmit: (data: TransactionCreate) => void;
@@ -16,7 +18,9 @@ interface Props {
 
 export default function CreateTransactionForm({ onSubmit }: Props) {
   const [amount, setAmount] = useState("");
-  const [occurredOn, setOccurredOn] = useState("");
+  const [occurredOn, setOccurredOn] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [type, setType] = useState<"loan" | "payment">("loan");
 
   function handleSubmit(e: React.FormEvent) {
@@ -50,16 +54,28 @@ export default function CreateTransactionForm({ onSubmit }: Props) {
           />
         </Flex>
         <Flex gap={2}>
-          <NativeSelect.Root flex={1}>
-            <NativeSelect.Field
-              value={type}
-              onChange={(e) => setType(e.target.value as "loan" | "payment")}
-            >
-              <option value="loan">Loan</option>
-              <option value="payment">Payment</option>
-            </NativeSelect.Field>
-          </NativeSelect.Root>
-          <Button type="submit" colorPalette="teal">
+          <Button
+            type="button"
+            flex={1}
+            colorPalette={transactionColors.loan.palette}
+            variant={type === "loan" ? "solid" : "outline"}
+            onClick={() => setType("loan")}
+            aria-label="Loan"
+          >
+            <GiPayMoney /> Loan
+          </Button>
+          <Button
+            type="button"
+            flex={1}
+            colorPalette={transactionColors.payment.palette}
+            variant={type === "payment" ? "solid" : "outline"}
+            onClick={() => setType("payment")}
+            aria-label="Payment"
+          >
+            <GiReceiveMoney /> Payment
+          </Button>
+          <Spacer />
+          <Button type="submit" colorPalette="teal" width={"40%"}>
             Add
           </Button>
         </Flex>

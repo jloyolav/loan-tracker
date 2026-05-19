@@ -4,6 +4,7 @@ import CreateDebtorForm from "../components/CreateDebtorForm";
 import DebtorList from "../components/DebtorList";
 import { createDebtor, getDebtors } from "../services/api";
 import type { Debtor, DebtorCreate } from "../types";
+import { errorColors } from "@/theme";
 
 export default function DebtorListPage() {
   const [debtors, setDebtors] = useState<Debtor[]>([]);
@@ -31,14 +32,14 @@ export default function DebtorListPage() {
   return (
     <>
       {error && (
-        <Text color="red.500" mb={4}>
+        <Text color={errorColors.text} mb={4}>
           {error}
         </Text>
       )}
       <Heading mb={6}>Debtors</Heading>
       <CreateDebtorForm onSubmit={handleCreateDebtor} />
       {formError && (
-        <Text color="red.500" mb={4}>
+        <Text color={errorColors.text} mb={4}>
           {formError}
         </Text>
       )}

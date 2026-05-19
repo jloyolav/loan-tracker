@@ -2,6 +2,7 @@ import { Flex, Box, Text, Spacer } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import type { Debtor } from "../types";
 import { formatCurrency } from "../utils";
+import { balanceColors } from "../theme";
 
 interface Props {
   debtor: Debtor;
@@ -23,7 +24,7 @@ export default function DebtorCard({ debtor }: Props) {
           <Spacer />
           <Text
             fontWeight="semibold"
-            color={debtor.balance >= 0 ? "green.500" : "red.500"}
+            color={debtor.balance >= 0 ? balanceColors.positive : balanceColors.negative}
           >
             {formatCurrency(debtor.balance)}
           </Text>
