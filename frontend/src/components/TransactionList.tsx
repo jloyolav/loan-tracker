@@ -13,6 +13,7 @@ export default function TransactionList({ transactions }: Props) {
         <Table.Row>
           <Table.ColumnHeader>Date</Table.ColumnHeader>
           <Table.ColumnHeader>Type</Table.ColumnHeader>
+          <Table.ColumnHeader>Notes</Table.ColumnHeader>
           <Table.ColumnHeader textAlign="right">Amount</Table.ColumnHeader>
         </Table.Row>
       </Table.Header>
