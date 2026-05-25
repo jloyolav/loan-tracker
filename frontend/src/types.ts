@@ -15,10 +15,12 @@ export interface Transaction {
   occurred_on: string;
   type: "loan" | "payment";
   created_at: string;
+  notes?: string;
 }
 
 export interface TransactionCreate {
   amount: number;
   occurred_on: string;
   type: "loan" | "payment";
+  notes?: string;
 }

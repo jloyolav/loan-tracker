@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import ConfigDict, Field
@@ -16,6 +16,7 @@ class TransactionCreate(SQLModel):
     amount: Decimal = Field(gt=0)
     occurred_on: date
     type: TransactionType
+    notes: Optional[str] = None
 
 
 class TransactionRead(SQLModel):
@@ -27,7 +28,7 @@ class TransactionRead(SQLModel):
     occurred_on: date
     type: TransactionType
     created_at: datetime
-
+    notes: Optional[str] = None
 
 def _require_debtor(session: Session, debtor_id: int) -> None:
     if session.get(Debtor, debtor_id) is None:
@@ -50,6 +51,7 @@ def create_transaction(
         amount=body.amount,
         occurred_on=body.occurred_on,
         type=body.type,
+        notes=body.notes,
     )
     session.add(tx)
     session.commit()

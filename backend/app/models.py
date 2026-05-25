@@ -52,5 +52,8 @@ class Transaction(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
-
+    notes: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(500), nullable=True),
+    )
     debtor: Debtor = Relationship()

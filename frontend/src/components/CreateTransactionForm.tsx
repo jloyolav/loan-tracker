@@ -22,14 +22,16 @@ export default function CreateTransactionForm({ onSubmit }: Props) {
     new Date().toISOString().split("T")[0],
   );
   const [type, setType] = useState<"loan" | "payment">("loan");
+  const [notes, setNotes] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || !occurredOn) return;
-    onSubmit({ amount: parseFloat(amount), occurred_on: occurredOn, type });
+    onSubmit({ amount: parseFloat(amount), occurred_on: occurredOn, type, notes: notes || undefined });
     setAmount("");
     setOccurredOn("");
     setType("loan");
+    setNotes("");
   }
 
   return (
@@ -53,6 +55,11 @@ export default function CreateTransactionForm({ onSubmit }: Props) {
             onChange={(e) => setOccurredOn(e.target.value)}
           />
         </Flex>
+        <Input
+          placeholder="Note (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
         <Flex gap={2}>
           <Button
             type="button"
