@@ -24,3 +24,10 @@ export interface TransactionCreate {
   type: "loan" | "payment";
   notes?: string;
 }
+
+export interface TransactionUpdate {
+  amount: number;
+  occurred_on: string;
+  type: "loan" | "payment";
+  notes?: string;
+}

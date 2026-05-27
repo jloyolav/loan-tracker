@@ -3,8 +3,14 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import CreateTransactionForm from "../components/CreateTransactionForm";
 import TransactionList from "../components/TransactionList";
-import { createTransaction, getDebtor, getTransactions } from "../services/api";
-import type { Debtor, Transaction, TransactionCreate } from "../types";
+import {
+  createTransaction,
+  deleteTransaction,
+  getDebtor,
+  getTransactions,
+  updateTransaction,
+} from "../services/api";
+import type { Debtor, Transaction, TransactionCreate, TransactionUpdate } from "../types";
 import { formatCurrency } from "../utils";
 import { balanceColors, errorColors } from "@/theme";
 
@@ -51,6 +57,50 @@ export default function DebtorDetailPage() {
     }
   }
 
+  async function handleDeleteTransaction(transaction: Transaction) {
+    try {
+      await deleteTransaction(debtorId, transaction.id);
+      setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
+
+      // recover the total balance from API
+      const updatedDebtor = await getDebtor(debtorId);
+      setDebtor(updatedDebtor);
+    } catch {
+      setFormError("Failed to delete transaction. Please try again.");
+    }
+  }
+
+  async function handleUpdateTransaction(
+    transaction: Transaction,
+    data: TransactionUpdate,
+  ) {
+    try {
+      // Persist the changes to the backend; receives the full updated transaction
+      const updatedTransaction = await updateTransaction(
+        debtorId,
+        transaction.id,
+        data,
+      );
+
+      // Replace the old transaction and re-sort by occurred_on so the list
+      // stays ordered even if the date was changed
+      setTransactions((prev) => {
+        const replaced = prev.map((t) =>
+          t.id === transaction.id ? updatedTransaction : t,
+        );
+        return replaced.sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
+      });
+
+      // Re-fetch the debtor to get the updated balance, since amount or type may have changed
+      const updatedDebtor = await getDebtor(debtorId);
+      setDebtor(updatedDebtor);
+
+      setFormError(null);
+    } catch {
+      setFormError("Failed to update transaction. Please try again.");
+    }
+  }
+
   return (
     <>
       <Link to="/">
@@ -64,6 +114,7 @@ export default function DebtorDetailPage() {
         <Text color={errorColors.text}>{error ?? "Debtor not found"}</Text>
       ) : (
         <>
+          {/** Header: name, total balance */}
           <Flex mb={6}>
             <Heading>{debtor.name}</Heading>
             <Spacer />
@@ -83,13 +134,20 @@ export default function DebtorDetailPage() {
           </Flex>
 
           <CreateTransactionForm onSubmit={handleCreateTransaction} />
+
           {formError && (
             <Text color={errorColors.text} mb={4}>
               {formError}
             </Text>
           )}
+
+          {/** Transaction list */}
           {transactions.length > 0 ? (
-            <TransactionList transactions={transactions} />
+            <TransactionList
+              transactions={transactions}
+              onEdit={handleUpdateTransaction}
+              onDelete={handleDeleteTransaction}
+            />
           ) : (
             <Text>No transactions found</Text>
           )}
