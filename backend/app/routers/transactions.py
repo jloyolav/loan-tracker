@@ -30,6 +30,14 @@ class TransactionRead(SQLModel):
     created_at: datetime
     notes: Optional[str] = None
 
+
+class TransactionUpdate(SQLModel):
+    amount: Decimal = Field(gt=0)
+    occurred_on: date
+    type: TransactionType
+    notes: Optional[str] = None
+
+
 def _require_debtor(session: Session, debtor_id: int) -> None:
     if session.get(Debtor, debtor_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Debtor not found")
@@ -72,3 +80,44 @@ def list_transactions(
     )
     rows = list(session.exec(stmt).all())
     return [TransactionRead.model_validate(r, from_attributes=True) for r in rows]
+
+
+@router.put("/debtors/{debtor_id}/transactions/{transaction_id}", response_model=TransactionRead)
+def update_transaction(
+    debtor_id: int,
+    transaction_id: int,
+    body: TransactionUpdate,
+    session: Annotated[Session, Depends(get_session)],
+) -> TransactionRead:
+    _require_debtor(session, debtor_id)
+    tx = session.exec(
+        select(Transaction).where(
+            Transaction.id == transaction_id,
+            Transaction.debtor_id == debtor_id,
+        )
+    ).first()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+    tx.amount = body.amount
+    tx.occurred_on = body.occurred_on
+    tx.type = body.type
+    tx.notes = body.notes
+    session.commit()
+    session.refresh(tx)
+    return TransactionRead.model_validate(tx, from_attributes=True)
+
+
+@router.delete("/debtors/{debtor_id}/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_transaction(debtor_id: int, transaction_id: int, session: Annotated[Session, Depends(get_session)]) -> None:
+    _require_debtor(session, debtor_id)
+    tx = session.exec(
+        select(Transaction).where(
+            Transaction.id == transaction_id,
+            Transaction.debtor_id == debtor_id,
+        )
+    ).first()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+    session.delete(tx)
+    session.commit()
