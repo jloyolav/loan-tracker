@@ -76,39 +76,32 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
+// Each format pairs a regex with the capture-group order (year/month/day).
+const DATE_FORMATS = [
+  { pattern: /^(\d{4})-(\d{2})-(\d{2})$/, year: 1, month: 2, day: 3 }, // YYYY-MM-DD
+  { pattern: /^(\d{2})-(\d{2})-(\d{4})$/, day: 1, month: 2, year: 3 }, // DD-MM-YYYY
+  { pattern: /^(\d{2})\/(\d{2})\/(\d{4})$/, day: 1, month: 2, year: 3 }, // DD/MM/YYYY
+] as const;
+
 export function parseFlexibleDate(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  let year: number;
-  let month: number;
-  let day: number;
+  for (const { pattern, year, month, day } of DATE_FORMATS) {
+    const match = pattern.exec(trimmed);
+    if (!match) continue;
 
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-  if (isoMatch) {
-    year = Number(isoMatch[1]);
-    month = Number(isoMatch[2]);
-    day = Number(isoMatch[3]);
-  } else {
-    const dashMatch = /^(\d{2})-(\d{2})-(\d{4})$/.exec(trimmed);
-    if (dashMatch) {
-      day = Number(dashMatch[1]);
-      month = Number(dashMatch[2]);
-      year = Number(dashMatch[3]);
-    } else {
-      const slashMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
-      if (!slashMatch) return null;
-      day = Number(slashMatch[1]);
-      month = Number(slashMatch[2]);
-      year = Number(slashMatch[3]);
-    }
+    const y = Number(match[year]);
+    const m = Number(match[month]);
+    const d = Number(match[day]);
+    if (!isValidCalendarDate(y, m, d)) return null;
+
+    const mm = String(m).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${y}-${mm}-${dd}`;
   }
 
-  if (!isValidCalendarDate(year, month, day)) return null;
-
-  const mm = String(month).padStart(2, "0");
-  const dd = String(day).padStart(2, "0");
-  return `${year}-${mm}-${dd}`;
+  return null;
 }
 
 function isValidCalendarDate(
@@ -189,7 +182,6 @@ export function buildImportPreview(
   }
 
   const { headers, rows } = parsed;
-  console.log(headers);
   const missingColumns = REQUIRED_COLUMNS.filter(
     (col) => !headers.includes(col),
   );
