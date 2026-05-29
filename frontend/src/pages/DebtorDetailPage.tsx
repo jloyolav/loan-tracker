@@ -1,7 +1,8 @@
-import { Flex, Heading, Spacer, Spinner, Text } from "@chakra-ui/react";
+import { Button, Flex, Heading, Spacer, Spinner, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import CreateTransactionForm from "../components/CreateTransactionForm";
+import CsvImportDialog from "../components/CsvImportDialog";
 import TransactionList from "../components/TransactionList";
 import {
   createTransaction,
@@ -24,6 +25,7 @@ export default function DebtorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
 
   // This effect fetches the debtor and transactions from the API and sets the state
   useEffect(() => {
@@ -68,6 +70,35 @@ export default function DebtorDetailPage() {
     } catch {
       setFormError("Failed to delete transaction. Please try again.");
     }
+  }
+
+  async function handleCsvImport(rows: TransactionCreate[]) {
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const row of rows) {
+      try {
+        await createTransaction(debtorId, row);
+        successCount++;
+      } catch {
+        failureCount++;
+      }
+    }
+
+    const [debtorData, transactionsData] = await Promise.all([
+      getDebtor(debtorId),
+      getTransactions(debtorId),
+    ]);
+    setDebtor(debtorData);
+    setTransactions(transactionsData);
+
+    if (failureCount > 0) {
+      throw new Error(
+        `Imported ${successCount} of ${rows.length}. ${failureCount} failed.`,
+      );
+    }
+
+    setFormError(null);
   }
 
   async function handleUpdateTransaction(
@@ -133,7 +164,24 @@ export default function DebtorDetailPage() {
             </Text>
           </Flex>
 
+          <Flex justify="flex-end" mb={2}>
+            <Button
+              variant="outline"
+              colorPalette="teal"
+              onClick={() => setCsvImportOpen(true)}
+            >
+              Import CSV
+            </Button>
+          </Flex>
+
           <CreateTransactionForm onSubmit={handleCreateTransaction} />
+
+          <CsvImportDialog
+            open={csvImportOpen}
+            onOpenChange={setCsvImportOpen}
+            existingTransactions={transactions}
+            onImport={handleCsvImport}
+          />
 
           {formError && (
             <Text color={errorColors.text} mb={4}>
