@@ -5,13 +5,15 @@
 Loan Tracker is a simple fullstack web application designed to manage personal loans between individuals.
 
 The main goal is to provide a clear and easy way to track:
+
 - Money lent to different people
 - Payments received
 - Remaining debt per person
 
 This project is built as a portfolio piece using:
-- **Frontend:** React + Chakra UI
-- **Backend:** FastAPI
+
+- **Frontend:** React 19 + TypeScript + Chakra UI v3 + Vite
+- **Backend:** FastAPI + SQLModel
 - **Database:** PostgreSQL
 
 ---
@@ -19,6 +21,7 @@ This project is built as a portfolio piece using:
 ## 🎯 Problem
 
 Managing personal loans manually (e.g., spreadsheets or notes) can become confusing over time:
+
 - Hard to track partial payments
 - Easy to lose history
 - No clear view of current debt
@@ -34,61 +37,54 @@ This app aims to solve that with a simple and structured interface.
 
 ---
 
-## 🚀 MVP Scope (Version 0.1)
+## ✅ Implemented Features
 
-This first version focuses on **core functionality only**.
+### 👥 Debtors
 
-### 👥 Debtors (Deudores)
 - Create a debtor (name)
-- View list of debtors
+- View list of debtors with current balance
 
 ### 💰 Transactions
-- Add a transaction:
-  - Amount
-  - Date
-  - Associated debtor
-  - Type:
-    - Loan given
-    - Payment received
 
-### 📊 Basic Visualization
-- View all transactions per debtor
+- Add a transaction: amount, date, type (loan / payment), optional notes
+- Edit and delete transactions (inline editing)
+- View transaction history per debtor, sorted by date
+- Import transactions from a CSV file (preview with duplicate detection)
+
+### 📊 Balance
+
+- Calculated total debt per debtor (derived from transactions)
 
 ---
 
-## 🔄 Future Iterations
+## 🔄 Roadmap
 
-### 🔹 Version 0.2
-- Calculate total debt per debtor
-- Display balance clearly in UI
-
-### 🔹 Version 0.3
-- Edit/delete transactions
-- Filter transactions
-- Improve UI/UX
-
-### 🔹 Version 0.4 (Optional)
 - Authentication (users & accounts)
 - Email reports
-- Data export (CSV)
+- Filter and search transactions
+- Improved CSV import (flexible column names, column mapping)
 
 ---
 
 ## 🧱 Tech Stack
 
 ### Backend
+
 - FastAPI
 - SQLModel / SQLAlchemy
 - PostgreSQL
 
 ### Frontend
-- React
-- Chakra UI
-- Axios
 
-### Deployment
-- Backend: Render / Railway
-- Frontend: Vercel / Netlify
+- React 19 + TypeScript
+- Chakra UI v3
+- React Router v7
+- Axios
+- Vite 6
+
+### Package manager
+
+- pnpm (frontend)
 
 ---
 
@@ -103,7 +99,7 @@ This first version focuses on **core functionality only**.
 
 ## 📌 Project Status
 
-🚧 In development — starting with MVP (v0.1)
+🚧 In development — core features complete
 
 ---
 

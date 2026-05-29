@@ -66,24 +66,26 @@ backend/
 
 ## Implementation status
 
-| Area                                                                         | Status                         |
-| ---------------------------------------------------------------------------- | ------------------------------ |
-| Dependencies, settings, engine, sessions                                     | Done                           |
-| CORS from `CORS_ORIGINS`                                                     | Done                           |
-| Create `debtor`, `loan_transaction` tables on DB via `create_all` on startup | Done                           |
-| `POST /debtors`, `GET /debtors`, `GET /debtors/{debtor_id}`                  | Done                           |
-| `POST/GET /debtors/{debtor_id}/transactions`                                 | Done                           |
+| Area                                                                         | Status |
+| ---------------------------------------------------------------------------- | ------ |
+| Dependencies, settings, engine, sessions                                     | Done   |
+| CORS from `CORS_ORIGINS`                                                     | Done   |
+| Create `debtor`, `loan_transaction` tables on DB via `create_all` on startup | Done   |
+| `POST /debtors`, `GET /debtors`, `GET /debtors/{debtor_id}`                  | Done   |
+| `POST/GET /debtors/{debtor_id}/transactions`                                 | Done   |
+| `PUT /debtors/{debtor_id}/transactions/{transaction_id}`                     | Done   |
+| `DELETE /debtors/{debtor_id}/transactions/{transaction_id}`                  | Done   |
+| `notes` field on `loan_transaction`                                          | Done   |
 
 ---
 
-## Scope MVP 1 (v0.1 backend)
+## Scope
 
 - No authentication
-- No email notifications to debtors
-- No editing or deleting transactions (`PATCH` / `DELETE`)
+- No email notifications
 - No advanced filtering on list endpoints
 
-Single-tenant: all rows belong to one implicit owner until multi-user work (e.g. v0.4).
+Single-tenant: all rows belong to one implicit owner until multi-user work.
 
 ---
 
@@ -116,10 +118,11 @@ Two logical entities; physical transaction table name is **`loan_transaction`** 
 | Field         | Type                      | Required | Notes                                     |
 | ------------- | ------------------------- | -------- | ----------------------------------------- |
 | `id`          | `SERIAL`                  | yes      | Primary key                               |
-| `debtor_id`   | `INTEGER` 3               | yes      | FK → `debtor.id`, `ON DELETE CASCADE`     |
+| `debtor_id`   | `INTEGER`                 | yes      | FK → `debtor.id`, `ON DELETE CASCADE`     |
 | `amount`      | `NUMERIC(12, 2)`          | yes      | `CHECK (amount > 0)`; meaning from `type` |
 | `occurred_on` | `DATE`                    | yes      | Business date                             |
 | `type`        | `transaction_type` (ENUM) | yes      | `loan` \| `payment`                       |
+| `notes`       | `VARCHAR(500)`            | no       | Optional free-text comment                |
 | `created_at`  | `TIMESTAMPTZ`             | yes      | Default `now()`                           |
 
 ### Relationships
@@ -157,10 +160,12 @@ Two logical entities; physical transaction table name is **`loan_transaction`** 
 
 ### Transactions (implemented)
 
-| Method | Path | Body | Success |
-| ------ | ---- | ---- | ------- |
-| `POST` | `/debtors/{debtor_id}/transactions` | `{ "amount", "occurred_on", "type" }` (`type`: `loan` or `payment`; `amount` must be positive) | `201` + `{ id, debtor_id, amount, occurred_on, type, created_at }`; `404` if debtor missing; `422` if invalid |
-| `GET` | `/debtors/{debtor_id}/transactions` | — | `200` + array of transaction objects, ordered by `occurred_on` then `created_at` ascending; `404` if debtor missing |
+| Method   | Path                                                 | Body                                            | Success                                                                                                              |
+| -------- | ---------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/debtors/{debtor_id}/transactions`                  | `{ "amount", "occurred_on", "type", "notes"? }` | `201` + `{ id, debtor_id, amount, occurred_on, type, notes, created_at }`; `404` if debtor missing; `422` if invalid |
+| `GET`    | `/debtors/{debtor_id}/transactions`                  | —                                               | `200` + array of transaction objects, ordered by `occurred_on` then `created_at` ascending; `404` if debtor missing  |
+| `PUT`    | `/debtors/{debtor_id}/transactions/{transaction_id}` | `{ "amount", "occurred_on", "type", "notes"? }` | `200` + updated transaction object; `404` if debtor or transaction missing; `422` if invalid                         |
+| `DELETE` | `/debtors/{debtor_id}/transactions/{transaction_id}` | —                                               | `204 No Content`; `404` if debtor or transaction missing                                                             |
 
 PostgreSQL enum `transaction_type` stores lowercase values (`loan`, `payment`); the ORM maps Python `TransactionType` accordingly.
 
