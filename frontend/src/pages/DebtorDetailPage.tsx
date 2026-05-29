@@ -11,9 +11,14 @@ import {
   getTransactions,
   updateTransaction,
 } from "../services/api";
-import type { Debtor, Transaction, TransactionCreate, TransactionUpdate } from "../types";
-import { formatCurrency } from "../utils";
-import { balanceColors, errorColors } from "@/theme";
+import type {
+  Debtor,
+  Transaction,
+  TransactionCreate,
+  TransactionUpdate,
+} from "../types";
+import { formatCurrency } from "../utils/format";
+import { balanceColors, errorColors } from "@/utils/theme";
 
 export default function DebtorDetailPage() {
   // Get the debtor ID from the URL with useParams (from react-router-dom)
@@ -119,7 +124,9 @@ export default function DebtorDetailPage() {
         const replaced = prev.map((t) =>
           t.id === transaction.id ? updatedTransaction : t,
         );
-        return replaced.sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
+        return replaced.sort((a, b) =>
+          a.occurred_on.localeCompare(b.occurred_on),
+        );
       });
 
       // Re-fetch the debtor to get the updated balance, since amount or type may have changed

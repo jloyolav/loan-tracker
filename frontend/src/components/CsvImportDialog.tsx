@@ -11,12 +11,12 @@ import {
 } from "@chakra-ui/react";
 import { useRef, useState } from "react";
 import type { Transaction, TransactionCreate } from "../types";
-import { formatCurrency, formatDate } from "../utils";
+import { formatCurrency, formatDate } from "../utils/format";
 import {
   buildImportPreview,
   type CsvImportPreviewRow,
 } from "../utils/csvImport";
-import { errorColors, transactionColors } from "@/theme";
+import { errorColors, transactionColors } from "@/utils/theme";
 
 interface Props {
   open: boolean;
@@ -57,7 +57,9 @@ export default function CsvImportDialog({
     (row) =>
       row.status === "duplicate_existing" || row.status === "duplicate_in_file",
   ).length;
-  const invalidCount = previewRows.filter((row) => row.status === "invalid").length;
+  const invalidCount = previewRows.filter(
+    (row) => row.status === "invalid",
+  ).length;
 
   function resetState() {
     setPreviewRows([]);
@@ -147,7 +149,9 @@ export default function CsvImportDialog({
     return (
       <Badge
         colorPalette={
-          isLoan ? transactionColors.loan.palette : transactionColors.payment.palette
+          isLoan
+            ? transactionColors.loan.palette
+            : transactionColors.payment.palette
         }
       >
         {isLoan ? "Loan" : "Payment"}
@@ -174,11 +178,10 @@ export default function CsvImportDialog({
             <Dialog.Body>
               <Stack gap={4}>
                 <Text fontSize="sm" color="fg.muted">
-                  Required columns:{" "}
-                  <strong>amount</strong>, <strong>occurred_on</strong>,{" "}
-                  <strong>type</strong>. Optional: <strong>notes</strong>.
-                  Amount must be plain digits (e.g. 50000). Dates: DD-MM-YYYY,
-                  YYYY-MM-DD, or DD/MM/YYYY.
+                  Required columns: <strong>amount</strong>,{" "}
+                  <strong>occurred_on</strong>, <strong>type</strong>. Optional:{" "}
+                  <strong>notes</strong>. Amount must be plain digits (e.g.
+                  50000). Dates: DD-MM-YYYY, YYYY-MM-DD, or DD/MM/YYYY.
                 </Text>
 
                 <Box>
@@ -246,11 +249,16 @@ export default function CsvImportDialog({
                               </Table.Cell>
                               <Table.Cell>
                                 <Stack gap={1}>
-                                  <Badge colorPalette={STATUS_PALETTES[row.status]}>
+                                  <Badge
+                                    colorPalette={STATUS_PALETTES[row.status]}
+                                  >
                                     {STATUS_LABELS[row.status]}
                                   </Badge>
                                   {row.errorMessage && (
-                                    <Text fontSize="xs" color={errorColors.text}>
+                                    <Text
+                                      fontSize="xs"
+                                      color={errorColors.text}
+                                    >
                                       {row.errorMessage}
                                     </Text>
                                   )}
@@ -266,7 +274,12 @@ export default function CsvImportDialog({
               </Stack>
             </Dialog.Body>
             <Dialog.Footer>
-              <Box display="flex" gap={3} justifyContent="flex-end" alignItems="center">
+              <Box
+                display="flex"
+                gap={3}
+                justifyContent="flex-end"
+                alignItems="center"
+              >
                 {isImporting && <Spinner size="sm" />}
                 <Button
                   variant="outline"
