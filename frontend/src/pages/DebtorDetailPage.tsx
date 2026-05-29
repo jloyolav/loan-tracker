@@ -1,7 +1,8 @@
-import { Flex, Heading, Spacer, Spinner, Text } from "@chakra-ui/react";
+import { Button, Flex, Heading, Spacer, Spinner, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import CreateTransactionForm from "../components/CreateTransactionForm";
+import CsvImportDialog from "../components/CsvImportDialog";
 import TransactionList from "../components/TransactionList";
 import {
   createTransaction,
@@ -10,9 +11,14 @@ import {
   getTransactions,
   updateTransaction,
 } from "../services/api";
-import type { Debtor, Transaction, TransactionCreate, TransactionUpdate } from "../types";
-import { formatCurrency } from "../utils";
-import { balanceColors, errorColors } from "@/theme";
+import type {
+  Debtor,
+  Transaction,
+  TransactionCreate,
+  TransactionUpdate,
+} from "../types";
+import { formatCurrency } from "../utils/format";
+import { balanceColors, errorColors } from "@/utils/theme";
 
 export default function DebtorDetailPage() {
   // Get the debtor ID from the URL with useParams (from react-router-dom)
@@ -24,6 +30,7 @@ export default function DebtorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
 
   // This effect fetches the debtor and transactions from the API and sets the state
   useEffect(() => {
@@ -70,6 +77,35 @@ export default function DebtorDetailPage() {
     }
   }
 
+  async function handleCsvImport(rows: TransactionCreate[]) {
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const row of rows) {
+      try {
+        await createTransaction(debtorId, row);
+        successCount++;
+      } catch {
+        failureCount++;
+      }
+    }
+
+    const [debtorData, transactionsData] = await Promise.all([
+      getDebtor(debtorId),
+      getTransactions(debtorId),
+    ]);
+    setDebtor(debtorData);
+    setTransactions(transactionsData);
+
+    if (failureCount > 0) {
+      throw new Error(
+        `Imported ${successCount} of ${rows.length}. ${failureCount} failed.`,
+      );
+    }
+
+    setFormError(null);
+  }
+
   async function handleUpdateTransaction(
     transaction: Transaction,
     data: TransactionUpdate,
@@ -88,7 +124,9 @@ export default function DebtorDetailPage() {
         const replaced = prev.map((t) =>
           t.id === transaction.id ? updatedTransaction : t,
         );
-        return replaced.sort((a, b) => a.occurred_on.localeCompare(b.occurred_on));
+        return replaced.sort((a, b) =>
+          a.occurred_on.localeCompare(b.occurred_on),
+        );
       });
 
       // Re-fetch the debtor to get the updated balance, since amount or type may have changed
@@ -133,7 +171,24 @@ export default function DebtorDetailPage() {
             </Text>
           </Flex>
 
+          <Flex justify="flex-end" mb={2}>
+            <Button
+              variant="outline"
+              colorPalette="teal"
+              onClick={() => setCsvImportOpen(true)}
+            >
+              Import CSV
+            </Button>
+          </Flex>
+
           <CreateTransactionForm onSubmit={handleCreateTransaction} />
+
+          <CsvImportDialog
+            open={csvImportOpen}
+            onOpenChange={setCsvImportOpen}
+            existingTransactions={transactions}
+            onImport={handleCsvImport}
+          />
 
           {formError && (
             <Text color={errorColors.text} mb={4}>

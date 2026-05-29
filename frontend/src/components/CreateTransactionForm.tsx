@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import type { TransactionCreate } from "../types";
 import { GiPayMoney, GiReceiveMoney } from "react-icons/gi";
-import { transactionColors } from "@/theme";
+import { transactionColors } from "@/utils/theme";
 
 interface Props {
   onSubmit: (data: TransactionCreate) => void;
@@ -27,7 +27,12 @@ export default function CreateTransactionForm({ onSubmit }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || !occurredOn) return;
-    onSubmit({ amount: parseFloat(amount), occurred_on: occurredOn, type, notes: notes || undefined });
+    onSubmit({
+      amount: parseFloat(amount),
+      occurred_on: occurredOn,
+      type,
+      notes: notes || undefined,
+    });
     setAmount("");
     setOccurredOn("");
     setType("loan");

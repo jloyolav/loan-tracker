@@ -4,7 +4,7 @@ import CreateDebtorForm from "../components/CreateDebtorForm";
 import DebtorList from "../components/DebtorList";
 import { createDebtor, getDebtors } from "../services/api";
 import type { Debtor, DebtorCreate } from "../types";
-import { errorColors } from "@/theme";
+import { errorColors } from "@/utils/theme";
 
 export default function DebtorListPage() {
   const [debtors, setDebtors] = useState<Debtor[]>([]);

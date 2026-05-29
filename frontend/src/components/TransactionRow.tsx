@@ -14,8 +14,8 @@ import {
 import { useState } from "react";
 import { LuCheck, LuPencil, LuTrash2, LuX } from "react-icons/lu";
 import type { Transaction, TransactionUpdate } from "../types";
-import { formatCurrency, formatDate } from "../utils";
-import { transactionColors } from "../theme";
+import { formatCurrency, formatDate } from "../utils/format";
+import { transactionColors } from "../utils/theme";
 
 interface Props {
   transaction: Transaction;
@@ -31,12 +31,14 @@ export default function TransactionRow({
   const isLoan = transaction.type === "loan";
   const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editedTransaction, setEditedTransaction] = useState<TransactionUpdate>({
-    amount: transaction.amount,
-    occurred_on: transaction.occurred_on,
-    type: transaction.type,
-    notes: transaction.notes,
-  });
+  const [editedTransaction, setEditedTransaction] = useState<TransactionUpdate>(
+    {
+      amount: transaction.amount,
+      occurred_on: transaction.occurred_on,
+      type: transaction.type,
+      notes: transaction.notes,
+    },
+  );
 
   function handleEditStart() {
     // Reset to current transaction values each time editing begins,
@@ -64,7 +66,9 @@ export default function TransactionRow({
     onDelete?.();
   }
 
-  const editColor = isLoan ? transactionColors.loan.text : transactionColors.payment.text;
+  const editColor = isLoan
+    ? transactionColors.loan.text
+    : transactionColors.payment.text;
 
   return (
     <Table.Row>
@@ -75,7 +79,10 @@ export default function TransactionRow({
             size="sm"
             value={editedTransaction.occurred_on}
             onChange={(e) =>
-              setEditedTransaction((prev) => ({ ...prev, occurred_on: e.target.value }))
+              setEditedTransaction((prev) => ({
+                ...prev,
+                occurred_on: e.target.value,
+              }))
             }
           />
         ) : (
@@ -102,7 +109,9 @@ export default function TransactionRow({
         ) : (
           <Badge
             colorPalette={
-              isLoan ? transactionColors.loan.palette : transactionColors.payment.palette
+              isLoan
+                ? transactionColors.loan.palette
+                : transactionColors.payment.palette
             }
           >
             {isLoan ? "Loan" : "Payment"}

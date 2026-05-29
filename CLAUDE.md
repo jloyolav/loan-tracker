@@ -22,7 +22,8 @@ Apply these across both backend and frontend:
 - **Separation of concerns** — keep data fetching, business logic, and UI rendering in separate layers
 - **YAGNI (You Aren't Gonna Need It)** — don't build for hypothetical futures; implement what is needed now
 - **Explicit over implicit** — prefer readable, obvious code over clever one-liners
-- **No dead code** — don't leave commented-out code, unused imports, or stubs behind
+- In the same line of the previous statement, always use clear names for methods and variables that clearly describe the purpose. **Don't use abrevations** (eg. use 'year' instead of 'y', 'month' instead of 'm', 'user' instead of 'usr', 'reference' instead of 'ref', etc)
+- **No dead code** — don't leave commented-out code, unused imports, or stubs in code _you write_
 
 When a decision deviates from these principles for a good reason (performance, framework constraints, time), call it out explicitly.
 
@@ -38,15 +39,30 @@ loan-tracker/
 │   │   ├── config.py             # Pydantic Settings (DATABASE_URL, CORS_ORIGINS from .env)
 │   │   └── routers/
 │   │       ├── debtors.py        # POST /debtors, GET /debtors, GET /debtors/{id}
-│   │       └── transactions.py   # POST & GET /debtors/{id}/transactions
+│   │       └── transactions.py   # POST, GET, PUT, DELETE /debtors/{id}/transactions
 │   ├── main.py                   # Re-export shim — lets `uvicorn main:app` work from backend/
 │   └── requirements.txt
-└── frontend/                     # React 19 + Vite 8 + TypeScript
+└── frontend/                     # React 19 + Vite 6 + TypeScript
     ├── src/
     │   ├── main.tsx              # App entry point, wraps with ChakraProvider
-    │   ├── App.tsx               # Root component (currently Vite default — not yet implemented)
-    │   └── components/
-    │       └── ui/               # Chakra UI scaffolded helpers (color-mode, provider, toaster, tooltip)
+    │   ├── App.tsx               # Root component — React Router routes defined here
+    │   ├── types.ts              # Shared TypeScript interfaces (Debtor, Transaction, etc.)
+    │   ├── theme.ts              # Centralized design tokens (colors, sizes)
+    │   ├── utils.ts              # Shared helpers (e.g. currency formatting)
+    │   ├── pages/
+    │   │   ├── DebtorListPage.tsx    # Route `/` — list debtors + create debtor form
+    │   │   └── DebtorDetailPage.tsx  # Route `/debtors/:id` — transactions + balance
+    │   ├── components/
+    │   │   ├── CreateDebtorForm.tsx
+    │   │   ├── DebtorCard.tsx
+    │   │   ├── DebtorList.tsx
+    │   │   ├── CreateTransactionForm.tsx
+    │   │   ├── TransactionList.tsx
+    │   │   ├── TransactionRow.tsx        # Inline editing mode (edit/delete per row)
+    │   │   ├── EditTransactionModal.tsx  # Unused — superseded by inline editing in TransactionRow
+    │   │   └── ui/               # Chakra UI scaffolded helpers (color-mode, provider, toaster, tooltip)
+    │   └── services/
+    │       └── api.ts            # All typed API functions (getDebtors, createDebtor, etc.)
     ├── index.html
     ├── vite.config.ts
     └── .env_example              # VITE_API_BASE_URL=http://127.0.0.1:8000
@@ -79,11 +95,12 @@ Health check endpoints: `GET /health` (validates config), `GET /health/db` (ping
 
 ```bash
 cd frontend
-npm install
-npm run dev        # starts at http://localhost:5173
+pnpm install
+pnpm dev        # starts at http://localhost:5173
 ```
 
 Key dependencies:
+
 - **Chakra UI v3** — component library with dark/light mode via `next-themes`
 - **React Router v7** — client-side routing
 - **Axios** — HTTP client for API calls
@@ -94,22 +111,24 @@ Key dependencies:
 Two tables. Balance is derived, not stored.
 
 - **`debtor`** — `id` (PK), `name` VARCHAR(255, not null)
-- **`loan_transaction`** — `id`, `debtor_id` (FK → debtor, CASCADE DELETE), `amount` NUMERIC(12,2) CHECK > 0, `occurred_on` DATE, `type` ENUM(`loan`|`payment`), `created_at` TIMESTAMPTZ
+- **`loan_transaction`** — `id`, `debtor_id` (FK → debtor, CASCADE DELETE), `amount` NUMERIC(12,2) CHECK > 0, `occurred_on` DATE, `type` ENUM(`loan`|`payment`), `notes` VARCHAR(500) NULL, `created_at` TIMESTAMPTZ
 
 `Transaction` maps to the physical table `loan_transaction` to avoid collisions with reserved SQL words.
 
 ## API endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | Service root |
-| GET | `/health` | Config health check |
-| GET | `/health/db` | Database ping |
-| POST | `/debtors` | Create debtor |
-| GET | `/debtors` | List all debtors |
-| GET | `/debtors/{debtor_id}` | Get single debtor |
-| POST | `/debtors/{debtor_id}/transactions` | Create transaction |
-| GET | `/debtors/{debtor_id}/transactions` | List transactions for a debtor |
+| Method | Path                                                 | Description                    |
+| ------ | ---------------------------------------------------- | ------------------------------ |
+| GET    | `/`                                                  | Service root                   |
+| GET    | `/health`                                            | Config health check            |
+| GET    | `/health/db`                                         | Database ping                  |
+| POST   | `/debtors`                                           | Create debtor                  |
+| GET    | `/debtors`                                           | List all debtors               |
+| GET    | `/debtors/{debtor_id}`                               | Get single debtor              |
+| POST   | `/debtors/{debtor_id}/transactions`                  | Create transaction             |
+| GET    | `/debtors/{debtor_id}/transactions`                  | List transactions for a debtor |
+| PUT    | `/debtors/{debtor_id}/transactions/{transaction_id}` | Full-replace a transaction     |
+| DELETE | `/debtors/{debtor_id}/transactions/{transaction_id}` | Delete a transaction           |
 
 ## API conventions
 
@@ -122,7 +141,8 @@ Two tables. Balance is derived, not stored.
 ## Schema classes (in routers)
 
 - `DebtorCreate` / `DebtorRead` — in `routers/debtors.py`
-- `TransactionCreate` / `TransactionRead` — in `routers/transactions.py`
+- `TransactionCreate` / `TransactionRead` / `TransactionUpdate` — in `routers/transactions.py`
+  - `TransactionUpdate` uses PUT semantics: all fields (`amount`, `occurred_on`, `type`) required; `notes` optional
 
 ## Frontend development methodology
 
@@ -134,6 +154,71 @@ Build the UI incrementally so every step produces something visible and verifiab
 4. **Each step must be browser-verifiable** — after every step, the app should render without errors and show the new UI change. If a step produces no visible output, it's too granular or should be combined with the next.
 5. **No API calls before the service layer exists** — create `src/services/api.ts` (with all typed API functions) before connecting any component to the backend.
 
-## MVP 1 scope (explicit exclusions)
+# Behavioral guidelines to reduce common LLM coding mistakes.
 
-No auth, no edit/delete on transactions (`PATCH`/`DELETE` unimplemented), no query-param filtering, single-tenant (no `user_id`).
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked — point it out instead.
+
+> **Reconciling with "No dead code":** that rule applies to code _you introduce_. Surgical Changes applies to code _already there_. Don't create dead code; don't silently delete existing dead code either.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
